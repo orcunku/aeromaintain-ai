@@ -21,7 +21,7 @@ not real aircraft maintenance decisions.
 
 import numpy as np
 import pandas as pd
-
+import joblib
 import mlflow
 import mlflow.sklearn
 
@@ -395,6 +395,36 @@ def print_split_summary(
         f"positive_rate={positive_rate:.2f}%"
     )
 
+def export_local_model_bundle(
+    model,
+    threshold,
+    output_path="artifacts/predictive_maintenance_bundle.joblib",
+) -> None:
+    """
+    Export the selected sklearn pipeline and its validation-selected
+    classification threshold for local inference.
+
+    The exported artifact is intended for the local AeroMaintain
+    agent/API demo and uses synthetic data only.
+    """
+
+    bundle = {
+        "model": model,
+        "threshold": float(threshold),
+        "model_type": "LogisticRegression",
+        "prediction_horizon_days": PREDICTION_HORIZON_DAYS,
+        "feature_columns": MODEL_FEATURE_COLUMNS,
+    }
+
+    joblib.dump(
+        bundle,
+        output_path,
+    )
+
+    print(
+        "\nLocal model bundle exported:",
+        output_path,
+    )
 
 def log_selected_model(
     model,
@@ -774,6 +804,13 @@ def main() -> None:
         ]
     )
 
+    # Export the selected model for free/local inference.
+    export_local_model_bundle(
+        model=selected_model,
+        threshold=selected_threshold,
+    )
+
+    # Also track the same selected model in MLflow.
     run_id = log_selected_model(
         model=selected_model,
         threshold=selected_threshold,

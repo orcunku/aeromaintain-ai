@@ -14,3 +14,6 @@ build/
 
 .DS_Store
 .vscode/
+# Local trained model artifacts
+artifacts/
+*.joblib
