@@ -7,3 +7,5 @@ pydantic
 python-dotenv
 pytest
 jupyter
+fastapi
+uvicorn
