@@ -1,4 +1,17 @@
 from aeromaintain.rag.ingest import load_knowledge_base
+from aeromaintain.rag.retrieve import (
+    LSAMaintenanceRetriever,
+    MaintenanceRetriever,
+)
+
+
+EXPECTED_COMPONENT_TYPES = {
+    "HYDRAULIC_PUMP",
+    "GENERATOR",
+    "AIR_CYCLE_MACHINE",
+    "FUEL_PUMP",
+    "ACTUATOR",
+}
 
 
 def test_knowledge_base_document_count():
@@ -39,9 +52,7 @@ def test_chunk_ids_are_unique():
         for chunk in chunks
     ]
 
-    assert len(chunk_ids) == len(
-        set(chunk_ids)
-    )
+    assert len(chunk_ids) == len(set(chunk_ids))
 
 
 def test_expected_component_types_are_present():
@@ -52,37 +63,28 @@ def test_expected_component_types_are_present():
         for chunk in chunks
     }
 
-    assert component_types == {
-        "AIR_CYCLE_MACHINE",
-        "ACTUATOR",
-        "FUEL_PUMP",
-        "GENERATOR",
-        "HYDRAULIC_PUMP",
-    }
+    assert component_types == EXPECTED_COMPONENT_TYPES
 
 
 def test_each_document_has_six_sections():
     chunks = load_knowledge_base()
 
-    document_ids = {
-        chunk.document_id
-        for chunk in chunks
-    }
+    section_counts = {}
 
-    for document_id in document_ids:
-        document_chunks = [
-            chunk
-            for chunk in chunks
-            if chunk.document_id
-            == document_id
-        ]
+    for chunk in chunks:
+        section_counts.setdefault(
+            chunk.document_id,
+            0,
+        )
+        section_counts[chunk.document_id] += 1
 
-        assert len(document_chunks) == 6
+    assert len(section_counts) == 5
+
+    for count in section_counts.values():
+        assert count == 6
+
+
 def test_retriever_ranks_relevant_component_first():
-    from aeromaintain.rag.retrieve import (
-        MaintenanceRetriever,
-    )
-
     retriever = MaintenanceRetriever()
 
     results = retriever.retrieve(
@@ -93,16 +95,60 @@ def test_retriever_ranks_relevant_component_first():
         top_k=5,
     )
 
-    assert results
-
-    assert (
-        results[0].chunk.component_type
-        == "HYDRAULIC_PUMP"
-    )
-
-    assert (
-        results[0].chunk.section
-        == "Typical Condition Indicators"
-    )
-
+    assert len(results) == 5
+    assert results[0].chunk.component_type == "HYDRAULIC_PUMP"
+    assert results[0].chunk.section == "Typical Condition Indicators"
     assert results[0].score > 0
+
+
+def test_lsa_retriever_returns_requested_number_of_results():
+    retriever = LSAMaintenanceRetriever(
+        n_components=10,
+    )
+
+    results = retriever.retrieve(
+        query=(
+            "hydraulic pump vibration is increasing "
+            "and temperature is elevated"
+        ),
+        top_k=5,
+    )
+
+    assert len(results) == 5
+
+
+def test_lsa_retriever_ranks_relevant_component_first():
+    retriever = LSAMaintenanceRetriever(
+        n_components=10,
+    )
+
+    results = retriever.retrieve(
+        query=(
+            "hydraulic pump vibration is increasing "
+            "and temperature is elevated"
+        ),
+        top_k=5,
+    )
+
+    assert results[0].chunk.component_type == "HYDRAULIC_PUMP"
+    assert results[0].chunk.section == "Typical Condition Indicators"
+    assert results[0].score > 0
+
+
+def test_lsa_component_filter_returns_only_requested_component():
+    retriever = LSAMaintenanceRetriever(
+        n_components=10,
+    )
+
+    results = retriever.retrieve(
+        query="increasing vibration and elevated temperature",
+        top_k=5,
+        component_type="HYDRAULIC_PUMP",
+    )
+
+    assert len(results) == 5
+
+    assert all(
+        result.chunk.component_type == "HYDRAULIC_PUMP"
+        for result in results
+    )
