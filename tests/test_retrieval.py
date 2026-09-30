@@ -78,3 +78,31 @@ def test_each_document_has_six_sections():
         ]
 
         assert len(document_chunks) == 6
+def test_retriever_ranks_relevant_component_first():
+    from aeromaintain.rag.retrieve import (
+        MaintenanceRetriever,
+    )
+
+    retriever = MaintenanceRetriever()
+
+    results = retriever.retrieve(
+        query=(
+            "hydraulic pump vibration is increasing "
+            "and temperature is elevated"
+        ),
+        top_k=5,
+    )
+
+    assert results
+
+    assert (
+        results[0].chunk.component_type
+        == "HYDRAULIC_PUMP"
+    )
+
+    assert (
+        results[0].chunk.section
+        == "Typical Condition Indicators"
+    )
+
+    assert results[0].score > 0
