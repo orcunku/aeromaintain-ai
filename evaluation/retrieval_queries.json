@@ -1,0 +1,62 @@
+[
+  {
+    "query_id": "Q001",
+    "query": "hydraulic pump vibration is increasing and temperature is elevated",
+    "expected_component_type": "HYDRAULIC_PUMP",
+    "expected_section": "Typical Condition Indicators"
+  },
+  {
+    "query_id": "Q002",
+    "query": "generator output is unstable and electrical behavior is fluctuating",
+    "expected_component_type": "GENERATOR",
+    "expected_section": "Typical Condition Indicators"
+  },
+  {
+    "query_id": "Q003",
+    "query": "air cycle machine temperature is rising with abnormal vibration",
+    "expected_component_type": "AIR_CYCLE_MACHINE",
+    "expected_section": "Typical Condition Indicators"
+  },
+  {
+    "query_id": "Q004",
+    "query": "fuel pump shows increasing vibration and abnormal thermal behavior",
+    "expected_component_type": "FUEL_PUMP",
+    "expected_section": "Typical Condition Indicators"
+  },
+  {
+    "query_id": "Q005",
+    "query": "actuator movement is becoming inconsistent and vibration is increasing",
+    "expected_component_type": "ACTUATOR",
+    "expected_section": "Typical Condition Indicators"
+  },
+  {
+    "query_id": "Q006",
+    "query": "what should be checked when investigating abnormal hydraulic pump behavior",
+    "expected_component_type": "HYDRAULIC_PUMP",
+    "expected_section": "Investigation Workflow"
+  },
+  {
+    "query_id": "Q007",
+    "query": "how should abnormal generator behavior be investigated",
+    "expected_component_type": "GENERATOR",
+    "expected_section": "Investigation Workflow"
+  },
+  {
+    "query_id": "Q008",
+    "query": "what possible issues could explain abnormal air cycle machine condition",
+    "expected_component_type": "AIR_CYCLE_MACHINE",
+    "expected_section": "Possible Synthetic Causes"
+  },
+  {
+    "query_id": "Q009",
+    "query": "what decision support guidance applies to a degrading fuel pump",
+    "expected_component_type": "FUEL_PUMP",
+    "expected_section": "Decision-Support Guidance"
+  },
+  {
+    "query_id": "Q010",
+    "query": "what is the purpose of monitoring actuator condition",
+    "expected_component_type": "ACTUATOR",
+    "expected_section": "Purpose"
+  }
+]
