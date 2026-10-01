@@ -4,6 +4,12 @@
 
 ### Aircraft Maintenance & Reliability Intelligence Platform
 
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://aeromaintain-ai.streamlit.app/)
+[![CI](https://github.com/orcunku/aeromaintain-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/orcunku/aeromaintain-ai/actions/workflows/ci.yml)
+
+**[Launch AeroMaintain AI →](https://aeromaintain-ai.streamlit.app/)**
+
+
 
 
 AeroMaintain AI is an end-to-end AI engineering portfolio project for **aircraft component maintenance intelligence**.
