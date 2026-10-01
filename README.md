@@ -915,7 +915,26 @@ The benchmark compares the lexical TF-IDF baseline with the LSA semantic retriev
 
 ---
 
+## Azure Blob Storage Integration
 
+AeroMaintain AI includes an optional Azure Blob Storage integration for cloud-based access to the synthetic raw aircraft datasets.
+
+The integration was implemented and validated using an **Azure Storage Account** with a **private Blob container**. All four raw Parquet datasets were successfully retrieved through the Azure SDK and loaded into pandas:
+
+| Dataset | Validation Result |
+| --- | --- |
+| `aircraft.parquet` | Successfully downloaded and loaded |
+| `components.parquet` | Successfully downloaded and loaded |
+| `maintenance.parquet` | Successfully downloaded and loaded |
+| `telemetry.parquet` | Successfully downloaded and loaded |
+
+Cloud authentication is supplied through the `AZURE_STORAGE_CONNECTION_STRING` environment variable. Credentials are never stored in source code or committed to the repository.
+
+The Azure integration is intentionally **optional**. The Streamlit application, FastAPI service, automated tests, and local ML/RAG workflow continue to operate from repository-local synthetic data, keeping the project reproducible without requiring an active Azure subscription.
+
+Azure-specific behavior is covered by mocked automated tests, so CI does not require cloud credentials or live Azure resources.
+
+> **Cloud validation scope:** Azure Blob Storage was used to implement and validate the cloud data-access path. AeroMaintain AI is not presented as being hosted on Azure, and the Azure integration is not required for the public Streamlit deployment.
 
 ## Technology Stack
 
