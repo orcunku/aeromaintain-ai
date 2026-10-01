@@ -6,7 +6,7 @@ AeroMaintain AI is an end-to-end aircraft maintenance intelligence portfolio sys
 
 The system is designed around the following investigation:
 
-> Given the latest available telemetry for an aircraft component, estimate its near-term risk, recover relevant maintenance history, retrieve supporting engineering evidence, and assemble those signals into a structured investigation for human review.
+> Given the latest available telemetry for an aircraft component, estimate its near-term risk, recover relevant maintenance history, retrieve supporting engineering evidence, produce a traceable recommendation, and propose a human-gated workflow action.
 
 AeroMaintain is not designed to autonomously determine airworthiness, prescribe maintenance actions, or replace qualified maintenance personnel.
 
@@ -30,6 +30,9 @@ A user should be able to inspect:
 - the maintenance events returned,
 - the retrieval query,
 - the engineering passages retrieved,
+- the deterministic recommendation,
+- the proposed workflow action,
+- the human-approval and execution state,
 - the limitations attached to the investigation.
 
 Each layer therefore exposes structured intermediate outputs.
@@ -48,7 +51,7 @@ The ML evaluation therefore uses temporal partitions and purge gaps rather than 
 
 ## 2.4 Modular AI Components
 
-Prediction, retrieval, maintenance-history access, and orchestration are implemented as separate modules.
+Prediction, retrieval, maintenance-history access, recommendation logic, action proposal logic, and orchestration are kept as explicit system responsibilities.
 
 This allows each subsystem to be tested and evaluated independently.
 
@@ -64,11 +67,13 @@ The deployed workflow can operate with:
 - TF-IDF / LSA retrieval,
 - deterministic Python orchestration.
 
-## 2.6 Human Decision Support
+## 2.6 Human-Gated Decision Support
 
-AeroMaintain intentionally stops at investigation support.
+AeroMaintain extends investigation support with a deterministic recommendation and a proposed workflow action.
 
-It does not convert model output into autonomous maintenance instructions.
+The system intentionally separates **recommendation** from **execution**. A proposed action remains human-gated and is not treated as a completed maintenance action.
+
+The current implementation does not modify an external maintenance system, determine airworthiness, or authorize maintenance execution.
 
 ---
 
@@ -121,9 +126,13 @@ It does not convert model output into autonomous maintenance instructions.
 ┌─────────────────────────────────────────────────────────────┐
 │                 MAINTENANCE AGENT                           │
 │                                                             │
-│ Validate ─ Predict ─ History ─ Retrieve ─ Assemble          │
-│                                                             │
-│              Structured Investigation                       │
+│ Observe ─ Risk ─ History ─ Evidence ─ Recommend            │
+│                         │                                   │
+│                         ▼                                   │
+│              Propose Workflow Action                        │
+│                         │                                   │
+│                         ▼                                   │
+│                 Human Approval Gate                         │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                ┌───────────┴───────────┐
@@ -798,9 +807,9 @@ The predictor is loaded lazily so retrieval-oriented operations do not unnecessa
 
 # 22. Maintenance Agent Architecture
 
-The maintenance agent is deterministic and evidence-driven.
+The maintenance agent is deterministic, evidence-driven, and human-gated.
 
-It does not require an LLM to decide the workflow.
+It does not require an LLM to decide the workflow. It combines explicit tool outputs with deterministic decision rules so that the recommendation and proposed action can be inspected independently.
 
 The orchestration sequence is:
 
@@ -823,13 +832,56 @@ The orchestration sequence is:
 6. Retrieve component-specific evidence
           │
           ▼
-7. Assemble structured investigation
+7. Build deterministic recommendation
           │
           ▼
-8. Attach limitations
+8. Propose workflow action
+          │
+          ▼
+9. Expose human-approval state
+          │
+          ▼
+10. Assemble summary + limitations
 ```
 
-The resulting investigation contains:
+At the decision layer, the current deterministic policy distinguishes two workflow recommendations:
+
+```text
+risk below configured threshold
+        │
+        ▼
+CONDITION_MONITORING
+priority = ROUTINE
+        │
+        ▼
+CREATE_MONITORING_CASE
+```
+
+and:
+
+```text
+risk at / above configured threshold
+        │
+        ▼
+ENGINEERING_REVIEW
+priority = ELEVATED
+        │
+        ▼
+CREATE_ENGINEERING_REVIEW_CASE
+```
+
+These are **workflow recommendations and proposals**, not approved aircraft maintenance instructions.
+
+Every proposed action is explicitly represented as:
+
+```text
+status = PROPOSED
+approval_status = HUMAN_APPROVAL_REQUIRED
+execution_status = NOT_EXECUTED
+external_system_modified = False
+```
+
+The resulting investigation contract contains:
 
 ```text
 component_id
@@ -838,9 +890,13 @@ risk
 maintenance_history
 retrieval_query
 evidence
+recommendation
+action_proposal
 summary
 limitations
 ```
+
+The limitations contract also exposes the safety boundary explicitly, including that autonomous maintenance decisions and real-world action execution are disabled.
 
 This contract is shared by the downstream service and interface layers.
 
@@ -861,7 +917,16 @@ history
 +
 retrieved evidence
 =
-investigation context
+traceable decision context
+        │
+        ▼
+deterministic recommendation
+        │
+        ▼
+proposed workflow action
+        │
+        ▼
+human approval required
 ```
 
 Using explicit orchestration provides:
@@ -903,6 +968,9 @@ FastAPI
 MaintenanceAgent / Predictor
   │
   ▼
+Recommendation + Action Proposal
+  │
+  ▼
 Structured JSON Response
 ```
 
@@ -926,7 +994,9 @@ MaintenanceAgent
     │
     ├── Predictor
     ├── Maintenance History
-    └── LSA Retrieval
+    ├── LSA Retrieval
+    ├── Recommendation Policy
+    └── Human-Gated Action Proposal
 ```
 
 The current Streamlit application does **not** make an HTTP request to the local FastAPI service.
@@ -939,13 +1009,14 @@ This distinction prevents the architecture documentation from implying a network
 
 # 26. Streamlit Investigation Experience
 
-The interface exposes four primary intelligence layers:
+The interface exposes five primary intelligence layers:
 
 ```text
 Predictive Risk
 Maintenance History
 Evidence Retrieval
-Agent Investigation
+Agent Recommendation
+Human-Gated Action Proposal
 ```
 
 The result view provides:
@@ -958,6 +1029,9 @@ The result view provides:
 - prediction horizon,
 - maintenance-event history,
 - retrieved evidence,
+- recommendation code and priority,
+- proposed workflow action,
+- approval and execution state,
 - investigation summary,
 - explicit limitations.
 
@@ -995,8 +1069,10 @@ FastAPI
 Current checkpoint:
 
 ```text
-41 tests passed
+60 tests passed
 ```
+
+The suite now explicitly tests the feature-engineering contract, agent recommendation/action-proposal behavior, API exposure of the agentic contract, and human-gated safety boundaries.
 
 Tests are intended to verify both isolated subsystem behavior and cross-layer contracts.
 
@@ -1074,6 +1150,12 @@ Predictor + Retriever
        ▼
 Maintenance Agent
        │
+       ▼
+Recommendation + Proposed Action
+       │
+       ▼
+Human Approval Boundary
+       │
        ├──► FastAPI
        │
        └──► Streamlit
@@ -1107,6 +1189,10 @@ synthetic predictive signal
 synthetic event history
 +
 synthetic retrieved evidence
++
+deterministic recommendation
++
+human-gated workflow proposal
 +
 traceable investigation context
 ```
@@ -1152,6 +1238,12 @@ The project does not yet include deployed drift monitoring, service-level teleme
 ## No Real Maintenance Documentation
 
 No OEM or regulatory manuals are included.
+
+## No Real-World Action Execution
+
+The recommendation layer can propose a monitoring or engineering-review workflow case, but the current system does not create a case in an external maintenance platform, modify aircraft records, execute maintenance, or grant return-to-service authority.
+
+Every action proposal remains `PROPOSED`, requires human approval, and is reported as `NOT_EXECUTED`.
 
 ---
 
@@ -1225,6 +1317,10 @@ Semantic Retrieval
       ↓
 Evidence-Driven Agent
       ↓
+Deterministic Recommendation
+      ↓
+Human-Gated Action Proposal
+      ↓
 API + Analyst Interface
 ```
 
@@ -1232,4 +1328,22 @@ The central architectural principle is:
 
 > **AI output should remain measurable, inspectable, and traceable back to the evidence used to produce it.**
 
-For that reason, AeroMaintain keeps predictive scoring, historical records, retrieved evidence, orchestration, and presentation as separate layers rather than hiding the entire workflow behind a single generated response.
+For that reason, AeroMaintain keeps predictive scoring, historical records, retrieved evidence, recommendation logic, action proposals, approval state, orchestration, and presentation as separate layers rather than hiding the entire workflow behind a single generated response.
+
+The current architecture therefore follows the decision-support path:
+
+```text
+Observe
+  ↓
+Risk Assess
+  ↓
+Retrieve Evidence
+  ↓
+Recommend
+  ↓
+Propose Action
+  ↓
+Human Approval
+```
+
+The final boundary is deliberate: **proposal is not execution**.

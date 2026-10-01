@@ -69,7 +69,7 @@ def build_mock_tools() -> Mock:
 def test_investigate_component_combines_tool_outputs():
     """
     The agent should combine predictive risk, maintenance history,
-    and retrieved knowledge-base evidence.
+    retrieved evidence, recommendation, and action proposal.
     """
     tools = build_mock_tools()
 
@@ -112,6 +112,9 @@ def test_investigate_component_combines_tool_outputs():
         result["summary"]["evidence_count"]
         == 2
     )
+
+    assert "recommendation" in result
+    assert "action_proposal" in result
 
 
 def test_investigate_component_calls_expected_tools():
@@ -214,10 +217,181 @@ def test_elevated_risk_adds_risk_context_to_query():
     assert "abnormal condition" in query
 
 
+def test_below_threshold_proposes_monitoring_case():
+    """
+    Below-threshold risk should produce a routine monitoring
+    recommendation and a non-executed monitoring-case proposal.
+    """
+    tools = build_mock_tools()
+
+    agent = MaintenanceAgent(
+        tools=tools,
+    )
+
+    result = agent.investigate_component(
+        component_id="CMP-00196",
+    )
+
+    recommendation = result[
+        "recommendation"
+    ]
+
+    proposal = result[
+        "action_proposal"
+    ]
+
+    assert (
+        recommendation["recommendation_code"]
+        == "CONDITION_MONITORING"
+    )
+
+    assert (
+        recommendation["priority"]
+        == "ROUTINE"
+    )
+
+    assert (
+        recommendation["autonomous_decision"]
+        is False
+    )
+
+    assert (
+        proposal["action_type"]
+        == "CREATE_MONITORING_CASE"
+    )
+
+    assert proposal["status"] == "PROPOSED"
+
+    assert (
+        proposal["approval_status"]
+        == "HUMAN_APPROVAL_REQUIRED"
+    )
+
+    assert (
+        proposal["execution_status"]
+        == "NOT_EXECUTED"
+    )
+
+    assert (
+        proposal["external_system_modified"]
+        is False
+    )
+
+
+def test_above_threshold_proposes_engineering_review():
+    """
+    Above-threshold risk should escalate the recommendation to
+    a human engineering-review workflow proposal.
+    """
+    tools = build_mock_tools()
+
+    tools.calculate_failure_risk.return_value.update(
+        {
+            "risk_score": 0.84,
+            "above_threshold": True,
+            "interpretation": "elevated",
+        }
+    )
+
+    agent = MaintenanceAgent(
+        tools=tools,
+    )
+
+    result = agent.investigate_component(
+        component_id="CMP-00196",
+    )
+
+    recommendation = result[
+        "recommendation"
+    ]
+
+    proposal = result[
+        "action_proposal"
+    ]
+
+    assert (
+        recommendation["recommendation_code"]
+        == "ENGINEERING_REVIEW"
+    )
+
+    assert (
+        recommendation["priority"]
+        == "ELEVATED"
+    )
+
+    assert (
+        proposal["action_type"]
+        == "CREATE_ENGINEERING_REVIEW_CASE"
+    )
+
+    assert (
+        proposal["priority"]
+        == "ELEVATED"
+    )
+
+    assert (
+        proposal["approval_status"]
+        == "HUMAN_APPROVAL_REQUIRED"
+    )
+
+    assert (
+        proposal["execution_status"]
+        == "NOT_EXECUTED"
+    )
+
+    assert (
+        proposal["external_system_modified"]
+        is False
+    )
+
+
+def test_summary_exposes_agentic_workflow_state():
+    """
+    The structured summary should expose the recommendation and
+    human-gated action state for downstream API/UI consumers.
+    """
+    tools = build_mock_tools()
+
+    agent = MaintenanceAgent(
+        tools=tools,
+    )
+
+    result = agent.investigate_component(
+        component_id="CMP-00196",
+    )
+
+    summary = result["summary"]
+
+    assert (
+        summary["recommendation_code"]
+        == "CONDITION_MONITORING"
+    )
+
+    assert (
+        summary["recommendation_priority"]
+        == "ROUTINE"
+    )
+
+    assert (
+        summary["proposed_action"]
+        == "CREATE_MONITORING_CASE"
+    )
+
+    assert (
+        summary["action_status"]
+        == "PROPOSED"
+    )
+
+    assert (
+        summary["approval_status"]
+        == "HUMAN_APPROVAL_REQUIRED"
+    )
+
+
 def test_investigation_exposes_safety_limitations():
     """
-    The agent output should explicitly state the synthetic and
-    decision-support limitations of the project.
+    The agent output should explicitly state the synthetic,
+    human-gated, and decision-support limitations.
     """
     tools = build_mock_tools()
 
@@ -240,6 +414,20 @@ def test_investigation_exposes_safety_limitations():
             "autonomous_maintenance_decision"
         ]
         is False
+    )
+
+    assert (
+        limitations[
+            "real_world_action_execution"
+        ]
+        is False
+    )
+
+    assert (
+        limitations[
+            "human_approval_required"
+        ]
+        is True
     )
 
     assert (

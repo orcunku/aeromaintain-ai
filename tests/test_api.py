@@ -8,6 +8,9 @@ from aeromaintain.api.main import app
 def build_fake_investigation() -> dict:
     """
     Return a deterministic synthetic investigation response for API tests.
+
+    The response mirrors the maintenance agent contract, including
+    human-gated recommendation and proposed workflow action fields.
     """
     return {
         "component_id": "CMP-00196",
@@ -29,6 +32,35 @@ def build_fake_investigation() -> dict:
             "investigation workflow"
         ),
         "evidence": [],
+        "recommendation": {
+            "recommendation_code": "CONDITION_MONITORING",
+            "priority": "ROUTINE",
+            "reason": (
+                "Predictive risk score remains below the "
+                "configured review threshold."
+            ),
+            "next_step": (
+                "Continue condition monitoring and retain the "
+                "investigation for human review."
+            ),
+            "decision_basis": {
+                "predictive_risk": True,
+                "maintenance_history": True,
+                "retrieved_evidence": True,
+            },
+            "autonomous_decision": False,
+        },
+        "action_proposal": {
+            "action_type": "CREATE_MONITORING_CASE",
+            "status": "PROPOSED",
+            "approval_status": "HUMAN_APPROVAL_REQUIRED",
+            "execution_status": "NOT_EXECUTED",
+            "external_system_modified": False,
+            "description": (
+                "Propose a monitoring case for qualified human "
+                "review and approval."
+            ),
+        },
         "summary": {
             "component_id": "CMP-00196",
             "component_type": "HYDRAULIC_PUMP",
@@ -41,10 +73,17 @@ def build_fake_investigation() -> dict:
             "latest_maintenance_event": None,
             "evidence_count": 0,
             "evidence_sections": [],
+            "recommendation_code": "CONDITION_MONITORING",
+            "recommendation_priority": "ROUTINE",
+            "proposed_action": "CREATE_MONITORING_CASE",
+            "action_status": "PROPOSED",
+            "approval_status": "HUMAN_APPROVAL_REQUIRED",
         },
         "limitations": {
             "data_type": "synthetic",
             "autonomous_maintenance_decision": False,
+            "real_world_action_execution": False,
+            "human_approval_required": True,
             "calibrated_failure_probability": False,
             "approved_maintenance_guidance": False,
         },
@@ -83,7 +122,7 @@ def test_health_endpoint():
 def test_investigate_endpoint_returns_agent_result():
     """
     Investigation endpoint should pass request parameters to the
-    maintenance agent and return its structured result.
+    maintenance agent and return its complete structured result.
     """
     fake_result = build_fake_investigation()
 
@@ -112,6 +151,109 @@ def test_investigate_endpoint_returns_agent_result():
         component_id="CMP-00196",
         top_k_documents=2,
         history_limit=4,
+    )
+
+
+def test_investigate_endpoint_exposes_agentic_contract():
+    """
+    Investigation API should expose the recommendation, proposed
+    action, and human-approval state produced by the agent.
+    """
+    fake_result = build_fake_investigation()
+
+    with patch(
+        "aeromaintain.api.main.MaintenanceAgent"
+    ) as agent_class:
+        fake_agent = Mock()
+        fake_agent.investigate_component.return_value = (
+            fake_result
+        )
+        agent_class.return_value = fake_agent
+
+        with TestClient(app) as client:
+            response = client.get(
+                "/investigate/CMP-00196"
+            )
+
+    assert response.status_code == 200
+
+    payload = response.json()
+
+    assert payload["recommendation"][
+        "recommendation_code"
+    ] == "CONDITION_MONITORING"
+
+    assert payload["recommendation"][
+        "priority"
+    ] == "ROUTINE"
+
+    assert payload["recommendation"][
+        "autonomous_decision"
+    ] is False
+
+    assert payload["action_proposal"][
+        "action_type"
+    ] == "CREATE_MONITORING_CASE"
+
+    assert payload["action_proposal"][
+        "status"
+    ] == "PROPOSED"
+
+    assert payload["action_proposal"][
+        "approval_status"
+    ] == "HUMAN_APPROVAL_REQUIRED"
+
+    assert payload["action_proposal"][
+        "execution_status"
+    ] == "NOT_EXECUTED"
+
+    assert payload["action_proposal"][
+        "external_system_modified"
+    ] is False
+
+
+def test_investigate_endpoint_exposes_safety_boundaries():
+    """
+    Investigation API should explicitly expose the human-gated
+    decision-support limitations of the workflow.
+    """
+    fake_result = build_fake_investigation()
+
+    with patch(
+        "aeromaintain.api.main.MaintenanceAgent"
+    ) as agent_class:
+        fake_agent = Mock()
+        fake_agent.investigate_component.return_value = (
+            fake_result
+        )
+        agent_class.return_value = fake_agent
+
+        with TestClient(app) as client:
+            response = client.get(
+                "/investigate/CMP-00196"
+            )
+
+    assert response.status_code == 200
+
+    limitations = response.json()["limitations"]
+
+    assert limitations["data_type"] == "synthetic"
+    assert (
+        limitations["autonomous_maintenance_decision"]
+        is False
+    )
+    assert (
+        limitations["real_world_action_execution"]
+        is False
+    )
+    assert limitations["human_approval_required"] is True
+    assert (
+        limitations["calibrated_failure_probability"]
+        is False
+    )
+    assert (
+        limitations["approved_maintenance_guidance"]
+        is False
     )
 
 

@@ -7,12 +7,16 @@ class MaintenanceAgent:
     """
     Evidence-driven maintenance investigation agent.
 
-    The agent coordinates the controlled AeroMaintain tools and combines:
+    The agent coordinates controlled AeroMaintain tools and combines:
     - predictive-maintenance risk scoring
     - historical maintenance events
     - synthetic maintenance knowledge-base evidence
+    - deterministic recommendation logic
+    - human-gated action proposals
 
-    The agent does not make autonomous maintenance decisions.
+    The agent can recommend and propose workflow actions, but it does not
+    execute real maintenance actions, create operational work orders,
+    ground aircraft, release aircraft, or replace components.
 
     All data and maintenance documents used by this project are synthetic.
     Predictive risk scores are not calibrated real-world aircraft failure
@@ -38,10 +42,12 @@ class MaintenanceAgent:
         """
         Run a structured investigation for one synthetic component.
 
-        The investigation combines:
-        1. predictive-maintenance risk
-        2. maintenance history
-        3. relevant maintenance knowledge-base evidence
+        Investigation flow:
+        1. observe predictive risk
+        2. inspect maintenance history
+        3. retrieve relevant engineering evidence
+        4. recommend the next investigation step
+        5. propose a human-gated workflow action
         """
         if not component_id.strip():
             raise ValueError(
@@ -84,12 +90,26 @@ class MaintenanceAgent:
             component_type=component_type,
         )
 
+        recommendation = self._build_recommendation(
+            risk=risk,
+            history=history,
+            evidence=evidence,
+        )
+
+        action_proposal = self._build_action_proposal(
+            component_id=component_id,
+            component_type=component_type,
+            recommendation=recommendation,
+        )
+
         summary = self._build_summary(
             component_id=component_id,
             component_type=component_type,
             risk=risk,
             history=history,
             evidence=evidence,
+            recommendation=recommendation,
+            action_proposal=action_proposal,
         )
 
         return {
@@ -99,10 +119,14 @@ class MaintenanceAgent:
             "maintenance_history": history,
             "retrieval_query": retrieval_query,
             "evidence": evidence,
+            "recommendation": recommendation,
+            "action_proposal": action_proposal,
             "summary": summary,
             "limitations": {
                 "data_type": "synthetic",
                 "autonomous_maintenance_decision": False,
+                "real_world_action_execution": False,
+                "human_approval_required": True,
                 "calibrated_failure_probability": False,
                 "approved_maintenance_guidance": False,
             },
@@ -192,12 +216,121 @@ class MaintenanceAgent:
         return " ".join(query_parts)
 
     @staticmethod
+    def _build_recommendation(
+        risk: dict,
+        history: list[dict],
+        evidence: list[dict],
+    ) -> dict[str, Any]:
+        """
+        Build a deterministic next-step recommendation.
+
+        This is workflow recommendation logic, not an autonomous
+        aircraft-maintenance decision.
+        """
+        reasons: list[str] = []
+
+        if risk["above_threshold"]:
+            recommendation_code = "ENGINEERING_REVIEW"
+            priority = "ELEVATED"
+
+            reasons.append(
+                "Predictive risk score is above the configured "
+                "investigation threshold."
+            )
+        else:
+            recommendation_code = "CONDITION_MONITORING"
+            priority = "ROUTINE"
+
+            reasons.append(
+                "Predictive risk score is below the configured "
+                "investigation threshold."
+            )
+
+        if history:
+            reasons.append(
+                "Maintenance history is available for contextual review."
+            )
+        else:
+            reasons.append(
+                "No maintenance events were returned for the "
+                "configured history window."
+            )
+
+        if evidence:
+            reasons.append(
+                "Relevant synthetic engineering evidence was retrieved "
+                "for investigation support."
+            )
+        else:
+            reasons.append(
+                "No supporting knowledge-base evidence was retrieved."
+            )
+
+        return {
+            "recommendation_code": recommendation_code,
+            "priority": priority,
+            "recommended_next_step": (
+                "Route the component investigation to a qualified "
+                "human reviewer for engineering assessment."
+                if risk["above_threshold"]
+                else
+                "Continue condition monitoring and retain the "
+                "investigation record for human review."
+            ),
+            "reasons": reasons,
+            "decision_basis": [
+                "predictive_risk",
+                "maintenance_history",
+                "retrieved_evidence",
+            ],
+            "autonomous_decision": False,
+        }
+
+    @staticmethod
+    def _build_action_proposal(
+        component_id: str,
+        component_type: str,
+        recommendation: dict[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Convert the recommendation into a human-gated workflow proposal.
+
+        No external system is modified and no real-world maintenance
+        action is executed.
+        """
+        if (
+            recommendation["recommendation_code"]
+            == "ENGINEERING_REVIEW"
+        ):
+            action_type = "CREATE_ENGINEERING_REVIEW_CASE"
+        else:
+            action_type = "CREATE_MONITORING_CASE"
+
+        return {
+            "action_type": action_type,
+            "component_id": component_id,
+            "component_type": component_type,
+            "priority": recommendation["priority"],
+            "status": "PROPOSED",
+            "approval_status": "HUMAN_APPROVAL_REQUIRED",
+            "execution_status": "NOT_EXECUTED",
+            "external_system_modified": False,
+            "description": (
+                "Proposed workflow action generated from the "
+                "investigation. A qualified human must review and "
+                "approve any operational follow-up."
+            ),
+        }
+
+    @staticmethod
     def _build_summary(
         component_id: str,
         component_type: str,
         risk: dict,
         history: list[dict],
         evidence: list[dict],
+        recommendation: dict[str, Any],
+        action_proposal: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Build a factual structured summary from tool outputs.
@@ -237,6 +370,21 @@ class MaintenanceAgent:
                 evidence
             ),
             "evidence_sections": evidence_sections,
+            "recommendation_code": recommendation[
+                "recommendation_code"
+            ],
+            "recommendation_priority": recommendation[
+                "priority"
+            ],
+            "proposed_action": action_proposal[
+                "action_type"
+            ],
+            "action_status": action_proposal[
+                "status"
+            ],
+            "approval_status": action_proposal[
+                "approval_status"
+            ],
         }
 
 
@@ -303,17 +451,36 @@ if __name__ == "__main__":
     )
 
     print(
-        "Evidence sections:",
-        investigation["summary"][
-            "evidence_sections"
+        "Recommendation:",
+        investigation["recommendation"][
+            "recommendation_code"
         ],
     )
 
     print(
-        "Synthetic decision-support only:",
-        not investigation[
-            "limitations"
-        ][
-            "autonomous_maintenance_decision"
+        "Priority:",
+        investigation["recommendation"][
+            "priority"
+        ],
+    )
+
+    print(
+        "Proposed action:",
+        investigation["action_proposal"][
+            "action_type"
+        ],
+    )
+
+    print(
+        "Approval status:",
+        investigation["action_proposal"][
+            "approval_status"
+        ],
+    )
+
+    print(
+        "Execution status:",
+        investigation["action_proposal"][
+            "execution_status"
         ],
     )

@@ -858,6 +858,9 @@ predict
 retrieve history
 resolve component
 retrieve evidence
+build recommendation
+propose workflow action
+expose human-approval state
 assemble result
 ```
 
@@ -894,7 +897,9 @@ The agent is:
 - testable,
 - local,
 - free to run,
-- evidence-driven.
+- evidence-driven,
+- explicit about recommendation logic,
+- human-gated before any real-world action.
 
 An LLM can later be added as an optional presentation or summarization layer without replacing the structured investigation contract.
 
@@ -919,6 +924,8 @@ risk
 maintenance_history
 retrieval_query
 evidence
+recommendation
+action_proposal
 summary
 limitations
 ```
@@ -929,7 +936,94 @@ The UI, API, tests, and future consumers can inspect individual evidence sources
 
 ---
 
-# ADR-024 — Expose the Core Workflow Through FastAPI
+# ADR-024 — Separate Recommendation from Action Execution
+
+**Status:** Accepted
+
+## Context
+
+An evidence-driven agent that only assembles information demonstrates orchestration, but it does not demonstrate how the system would translate evidence into a controlled next-step recommendation.
+
+At the same time, directly creating work orders, modifying maintenance records, grounding aircraft, or authorizing maintenance would exceed the scope and validation level of this synthetic portfolio system.
+
+## Decision
+
+Add a deterministic decision layer with two distinct outputs:
+
+```text
+recommendation
+```
+
+and:
+
+```text
+action_proposal
+```
+
+The recommendation explains the workflow category, priority, reasons, next step, and evidence basis.
+
+The action proposal represents what the system would like a qualified human reviewer to consider initiating.
+
+No external side effect occurs when the proposal is generated.
+
+## Alternatives Considered
+
+### Stop at evidence aggregation
+
+Advantages:
+
+- simplest safety boundary,
+- minimal decision logic.
+
+Disadvantages:
+
+- weaker demonstration of agent decision behavior,
+- no explicit transition from evidence to a controlled next step.
+
+### Automatically execute the proposed action
+
+Rejected for the current system because:
+
+- all operational data and documentation are synthetic,
+- the predictive score is not a calibrated failure probability,
+- no real maintenance platform is integrated,
+- no authentication or authorization layer exists,
+- no aviation approval or governance framework has validated the workflow,
+- external execution is unnecessary for demonstrating the engineering pattern.
+
+### Use an LLM to generate the recommendation
+
+Not required for the current workflow.
+
+The decision boundary is deliberately deterministic so threshold behavior and action state can be tested exactly.
+
+## Consequences
+
+The agent now follows:
+
+```text
+Observe
+  ↓
+Risk Assess
+  ↓
+Retrieve Evidence
+  ↓
+Recommend
+  ↓
+Propose Action
+  ↓
+Human Approval
+```
+
+This makes the agent more action-oriented without implying autonomous maintenance authority.
+
+The API, Streamlit interface, and tests can inspect the recommendation and proposed action as structured state.
+
+The proposal remains non-executing and does not modify an external system.
+
+---
+
+# ADR-025 — Expose the Core Workflow Through FastAPI
 
 **Status:** Accepted
 
@@ -953,7 +1047,7 @@ The system has a programmatic interface suitable for integration testing and fut
 
 ---
 
-# ADR-025 — Let Streamlit Use the Core Agent Directly
+# ADR-026 — Let Streamlit Use the Core Agent Directly
 
 **Status:** Accepted
 
@@ -1002,7 +1096,7 @@ A future distributed deployment can change this boundary without rewriting the c
 
 ---
 
-# ADR-026 — Build a Dedicated Intelligence Dashboard
+# ADR-027 — Build a Dedicated Intelligence Dashboard
 
 **Status:** Accepted
 
@@ -1018,7 +1112,8 @@ Create a custom AeroMaintain intelligence interface that emphasizes:
 Predictive Risk
 Maintenance History
 Evidence Retrieval
-Agent Investigation
+Agent Recommendation
+Human-Gated Action Proposal
 ```
 
 The UI also exposes system status and architecture context.
@@ -1032,7 +1127,7 @@ The dashboard acts as both:
 
 ---
 
-# ADR-027 — Avoid Fake Navigation
+# ADR-028 — Avoid Fake Navigation
 
 **Status:** Accepted
 
@@ -1058,7 +1153,7 @@ The UI communicates architecture without implying unsupported interactions.
 
 ---
 
-# ADR-028 — Include Runtime Assets in the Portfolio Repository
+# ADR-029 — Include Runtime Assets in the Portfolio Repository
 
 **Status:** Accepted
 
@@ -1113,7 +1208,7 @@ The demo repository is slightly larger but substantially easier to run and deplo
 
 ---
 
-# ADR-029 — Keep Processed Pipeline Outputs Out of Git
+# ADR-030 — Keep Processed Pipeline Outputs Out of Git
 
 **Status:** Accepted
 
@@ -1137,7 +1232,7 @@ The repository contains enough data to run the demonstration without becoming a 
 
 ---
 
-# ADR-030 — Use Automated Tests Across System Layers
+# ADR-031 — Use Automated Tests Across System Layers
 
 **Status:** Accepted
 
@@ -1161,7 +1256,17 @@ API
 Current checkpoint:
 
 ```text
-41 tests passed
+60 tests passed
+```
+
+The suite includes explicit contract tests for:
+
+```text
+feature engineering and leakage boundaries
+agent recommendation behavior
+human-gated action proposals
+FastAPI exposure of the agentic contract
+safety limitations and non-execution state
 ```
 
 ## Consequences
@@ -1170,7 +1275,7 @@ Refactoring can be checked against existing behavioral contracts before commits 
 
 ---
 
-# ADR-031 — Do Not Present the System as Production-Ready
+# ADR-032 — Do Not Present the System as Production-Ready
 
 **Status:** Accepted
 
@@ -1216,7 +1321,7 @@ while clearly separating those engineering patterns from real operational valida
 
 ---
 
-# ADR-032 — Preserve Human Authority
+# ADR-033 — Preserve Human Authority
 
 **Status:** Accepted
 
@@ -1224,43 +1329,104 @@ while clearly separating those engineering patterns from real operational valida
 
 Aircraft maintenance is safety-sensitive.
 
-A predictive model or retrieval system should not be represented as an autonomous maintenance authority.
+A predictive model, retrieval system, recommendation policy, or agent should not be represented as an autonomous maintenance authority.
+
+The project benefits from demonstrating an agent that can move beyond evidence collection and make a traceable workflow recommendation, but that capability must remain clearly separated from real maintenance execution.
 
 ## Decision
 
-The architecture terminates at:
+The architecture may produce:
 
 ```text
-evidence-driven investigation
+predictive risk
+retrieved evidence
+deterministic recommendation
+proposed workflow action
 ```
 
-for human review.
+but the action boundary is:
 
-It does not produce:
+```text
+PROPOSED
+    │
+    ▼
+HUMAN_APPROVAL_REQUIRED
+    │
+    ▼
+NOT_EXECUTED
+```
+
+The current deterministic recommendation policy can return:
+
+```text
+CONDITION_MONITORING
+priority = ROUTINE
+```
+
+or:
+
+```text
+ENGINEERING_REVIEW
+priority = ELEVATED
+```
+
+and can propose:
+
+```text
+CREATE_MONITORING_CASE
+```
+
+or:
+
+```text
+CREATE_ENGINEERING_REVIEW_CASE
+```
+
+These values describe an internal workflow proposal. They do **not** mean that a real case was created in an external maintenance system.
+
+The action proposal contract explicitly records:
+
+```text
+status = PROPOSED
+approval_status = HUMAN_APPROVAL_REQUIRED
+execution_status = NOT_EXECUTED
+external_system_modified = False
+```
+
+The system does not produce or execute:
 
 ```text
 airworthiness approval
 return-to-service authorization
 approved maintenance instructions
 autonomous component replacement decisions
+external maintenance-system modification
 ```
 
 ## Consequences
 
-System language consistently uses concepts such as:
+The agent demonstrates a meaningful decision layer while preserving human authority.
+
+System language distinguishes:
 
 ```text
-risk
-evidence
-investigation
-decision support
+recommendation
+proposal
+approval
+execution
 ```
 
-rather than implying autonomous maintenance control.
+rather than collapsing them into a single concept of "action."
+
+The central safety rule is:
+
+> **Proposal is not execution.**
+
+Any future integration capable of external side effects would require a separate authorization, audit, identity, and governance design before this boundary could change.
 
 ---
 
-# ADR-033 — Prefer Reproducibility Over Unnecessary Complexity
+# ADR-034 — Prefer Reproducibility Over Unnecessary Complexity
 
 **Status:** Accepted
 
@@ -1301,7 +1467,7 @@ The architecture remains explainable end-to-end.
 
 ---
 
-# ADR-034 — Maintain a Free-to-Run Core System
+# ADR-035 — Maintain a Free-to-Run Core System
 
 **Status:** Accepted
 
@@ -1328,7 +1494,7 @@ A developer can inspect and run the core AI workflow without external inference 
 
 ---
 
-# ADR-035 — Keep Training and Runtime Contracts Explicit
+# ADR-036 — Keep Training and Runtime Contracts Explicit
 
 **Status:** Accepted
 
@@ -1379,12 +1545,14 @@ The major AeroMaintain decisions can be summarized as:
 | Retrieval evaluation | Hit@1, Hit@3, MRR |
 | Knowledge base | Synthetic project-owned documents |
 | Agent | Deterministic evidence-driven orchestration |
-| Agent output | Structured evidence contract |
+| Agent decision | Deterministic recommendation + human-gated action proposal |
+| Agent output | Structured evidence, recommendation, action, and limitation contract |
 | API | FastAPI |
 | UI | Streamlit |
 | UI execution | Direct core-agent invocation |
 | Runtime data | Small synthetic assets tracked in Git |
 | External LLM | Not required |
+| Action execution | Proposed only; no external system modification |
 | Maintenance authority | Human remains the decision-maker |
 
 ---

@@ -9,7 +9,7 @@ The current evaluation framework covers two primary AI capabilities:
 1. predictive maintenance risk modeling,
 2. maintenance-document retrieval.
 
-The maintenance agent is then tested as an orchestration layer that combines those capabilities with maintenance history.
+The maintenance agent is then tested as an orchestration and controlled decision layer that combines those capabilities with maintenance history, produces a deterministic recommendation, and emits a human-gated workflow action proposal.
 
 All reported results are produced using **synthetic project data and synthetic maintenance documentation**.
 
@@ -381,8 +381,8 @@ Two baseline model families were evaluated.
 
 Logistic Regression provides:
 
-- a lightweight baseline,
-- nonlinear behavior through engineered features and categorical expansion,
+- a lightweight linear baseline in the transformed feature space,
+- the ability to use engineered numeric features and one-hot encoded categorical inputs,
 - simple persistence,
 - efficient local inference.
 
@@ -941,9 +941,14 @@ maintenance-history retrieval
 component-type resolution
 query construction
 evidence retrieval
+deterministic recommendation
+workflow action proposal
+human-approval state
 investigation assembly
 limitations
 ```
+
+Agent evaluation is intentionally a **behavioral and contract evaluation**. The project does not claim that the recommendation policy has been clinically, operationally, or aviation-domain validated against real maintenance decisions.
 
 ---
 
@@ -958,6 +963,8 @@ risk
 maintenance_history
 retrieval_query
 evidence
+recommendation
+action_proposal
 summary
 limitations
 ```
@@ -1005,6 +1012,21 @@ The maintenance-history workflow returns one event for the current synthetic dat
 
 The evidence retrieval stage returns component-specific synthetic maintenance passages.
 
+Because this example is below the configured threshold, the deterministic decision layer returns:
+
+```text
+recommendation_code = CONDITION_MONITORING
+priority = ROUTINE
+
+action_type = CREATE_MONITORING_CASE
+status = PROPOSED
+approval_status = HUMAN_APPROVAL_REQUIRED
+execution_status = NOT_EXECUTED
+external_system_modified = False
+```
+
+The action is a structured proposal only. The evaluation does not treat it as a created external case or an executed maintenance action.
+
 This example is useful as an integration check across:
 
 ```text
@@ -1012,7 +1034,9 @@ feature generation
 → prediction
 → maintenance history
 → retrieval
-→ agent assembly
+→ recommendation
+→ proposed action
+→ human-approval boundary
 ```
 
 It is not a special-case rule encoded into the agent.
@@ -1034,6 +1058,15 @@ GET /components/{component_id}/risk
 
 Tests validate the service contract without requiring every API test to rerun expensive underlying workflows.
 
+The investigation endpoint contract is also checked for the agentic decision fields:
+
+```text
+recommendation
+action_proposal
+```
+
+and for safety state showing that human approval is required and real-world execution has not occurred.
+
 ---
 
 # 34. Automated Test Suite
@@ -1041,7 +1074,7 @@ Tests validate the service contract without requiring every API test to rerun ex
 At the current project checkpoint:
 
 ```text
-41 tests passed
+60 tests passed
 ```
 
 The suite covers major areas including:
@@ -1054,6 +1087,30 @@ maintenance tools
 maintenance agent
 FastAPI
 ```
+
+The feature-engineering tests verify important serving and leakage-related contracts, including:
+
+- duplicate handling and missing-temperature flags,
+- historical rolling sensor features,
+- component isolation,
+- cycle-life feature construction,
+- exclusion of simulation-only susceptibility from model inputs,
+- required feature validation,
+- exact latest-component inference feature ordering.
+
+The maintenance-agent tests verify:
+
+- expected tool orchestration,
+- maintenance-context retrieval queries,
+- below-threshold `CONDITION_MONITORING` behavior,
+- above-threshold `ENGINEERING_REVIEW` behavior,
+- proposed monitoring and engineering-review cases,
+- `HUMAN_APPROVAL_REQUIRED`,
+- `NOT_EXECUTED`,
+- no external system modification,
+- explicit safety limitations.
+
+The FastAPI tests verify that the investigation endpoint exposes the recommendation/action contract and its safety boundaries.
 
 The test suite serves a different purpose from ML evaluation.
 
@@ -1096,6 +1153,14 @@ The complete project uses several different forms of validation.
                         │
                         ▼
 ┌───────────────────────────────────────────────┐
+│ AGENT CONTRACT EVALUATION                     │
+│                                               │
+│ Are recommendation, proposal, approval, and   │
+│ non-execution states correct?                 │
+└───────────────────────┬───────────────────────┘
+                        │
+                        ▼
+┌───────────────────────────────────────────────┐
 │ INTEGRATION CHECK                             │
 │                                               │
 │ Do model + history + retrieval + agent work?  │
@@ -1121,7 +1186,11 @@ The current project has not established:
 - operational maintenance cost reduction,
 - safety impact,
 - regulatory compliance,
-- production service reliability.
+- production service reliability,
+- correctness of maintenance recommendations on real aircraft,
+- safety or operational benefit of the proposed workflow actions,
+- human approval quality or human-factors outcomes,
+- real-world action execution.
 
 These require real operational data, domain experts, controlled validation, and appropriate governance.
 
@@ -1217,9 +1286,24 @@ reranking
 
 # 39. Future Agent Evaluation
 
-If a generative model is later added to AeroMaintain, evaluation should remain grounded in the structured evidence contract.
+The current deterministic agent is evaluated for workflow and contract correctness, not for real-world maintenance recommendation quality.
 
-Potential criteria include:
+A stronger future agent evaluation would require domain-expert review of cases such as:
+
+```text
+recommendation appropriateness
+priority appropriateness
+evidence-to-recommendation consistency
+false escalation burden
+missed escalation rate
+human override behavior
+approval workflow usability
+action auditability
+```
+
+Those evaluations cannot be established from the current synthetic benchmark alone.
+
+If a generative model is later added to AeroMaintain, it should remain grounded in the structured evidence contract and be evaluated separately using criteria such as:
 
 ```text
 evidence faithfulness
@@ -1231,7 +1315,7 @@ maintenance-history preservation
 instruction safety
 ```
 
-The generative layer should be evaluated separately from retrieval quality and predictive model quality.
+Generative quality, retrieval quality, predictive quality, deterministic recommendation behavior, and real-world maintenance validity are separate evaluation problems and should not be collapsed into one score.
 
 ---
 
@@ -1315,11 +1399,33 @@ Selected retriever:
 LSA
 ```
 
+## Agent Contract
+
+```text
+Recommendation modes:
+CONDITION_MONITORING
+ENGINEERING_REVIEW
+
+Action state:
+PROPOSED
+
+Approval:
+HUMAN_APPROVAL_REQUIRED
+
+Execution:
+NOT_EXECUTED
+
+External system modified:
+False
+```
+
+These values describe verified software behavior, not validated real-world maintenance recommendation quality.
+
 ## Software
 
 ```text
 Automated tests:
-41 passed
+60 passed
 ```
 
 ---
@@ -1332,7 +1438,9 @@ The predictive model shows measurable but modest risk-ranking signal on held-out
 
 The LSA retriever improves over the project's TF-IDF baseline on a small synthetic retrieval benchmark.
 
-The deterministic agent then combines these independently inspectable capabilities with maintenance history.
+The deterministic agent then combines these independently inspectable capabilities with maintenance history, produces a traceable recommendation, and emits a human-gated action proposal.
+
+Automated tests verify that the proposal remains `PROPOSED`, requires human approval, is `NOT_EXECUTED`, and does not modify an external system. These tests establish software-contract behavior only; they do not establish that the recommendation would be correct for real aircraft maintenance.
 
 The most important evaluation principle is therefore:
 

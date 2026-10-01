@@ -1030,6 +1030,89 @@ div.stButton > button:hover {
 }
 
 
+
+
+/* ============================================================
+   AGENT DECISION + HUMAN GATE
+============================================================ */
+
+.agent-decision-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.65rem;
+    margin-top: 0.28rem;
+}
+
+.agent-decision-card {
+    padding: 0.78rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: linear-gradient(145deg, rgba(15, 28, 45, 0.94), rgba(9, 20, 34, 0.96));
+    box-shadow: var(--shadow);
+}
+
+.agent-decision-card-accent {
+    border-color: rgba(251, 191, 36, 0.22);
+}
+
+.agent-decision-label {
+    color: var(--muted-2);
+    font-size: 0.48rem;
+    font-weight: 850;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.agent-decision-value {
+    margin-top: 0.25rem;
+    color: var(--text);
+    font-size: 0.76rem;
+    font-weight: 800;
+}
+
+.agent-decision-meta {
+    margin-top: 0.28rem;
+    color: var(--muted);
+    font-size: 0.53rem;
+    line-height: 1.45;
+}
+
+.agent-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.32rem;
+    margin-top: 0.5rem;
+}
+
+.agent-pill {
+    padding: 0.2rem 0.38rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-soft);
+    font-size: 0.47rem;
+    font-weight: 850;
+    letter-spacing: 0.05em;
+}
+
+.agent-pill-approval {
+    border-color: rgba(251, 191, 36, 0.25);
+    color: var(--amber);
+    background: rgba(251, 191, 36, 0.045);
+}
+
+.agent-pill-safe {
+    border-color: rgba(134, 239, 172, 0.20);
+    color: var(--green);
+    background: rgba(134, 239, 172, 0.035);
+}
+
+@media (max-width: 900px) {
+    .agent-decision-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+
 /* ============================================================
    BRIEF
 ============================================================ */
@@ -1773,6 +1856,119 @@ def evidence_markup(
     )
 
 
+
+
+def agent_decision_markup(
+    result: dict[str, Any],
+) -> str:
+    recommendation = result.get(
+        "recommendation",
+        {},
+    )
+
+    proposal = result.get(
+        "action_proposal",
+        {},
+    )
+
+    recommendation_code = recommendation.get(
+        "recommendation_code",
+        "UNAVAILABLE",
+    )
+
+    priority = recommendation.get(
+        "priority",
+        "UNSPECIFIED",
+    )
+
+    reason = recommendation.get(
+        "reason",
+        "No recommendation rationale returned.",
+    )
+
+    next_step = recommendation.get(
+        "next_step",
+        "Human review required before any external action.",
+    )
+
+    action_type = proposal.get(
+        "action_type",
+        "NO_ACTION_PROPOSED",
+    )
+
+    action_status = proposal.get(
+        "status",
+        "UNAVAILABLE",
+    )
+
+    approval_status = proposal.get(
+        "approval_status",
+        "HUMAN_APPROVAL_REQUIRED",
+    )
+
+    execution_status = proposal.get(
+        "execution_status",
+        "NOT_EXECUTED",
+    )
+
+    return f"""
+    <div class="agent-decision-grid">
+
+        <div class="agent-decision-card">
+            <div class="agent-decision-label">
+                Agent Recommendation
+            </div>
+
+            <div class="agent-decision-value">
+                {esc(readable_component_type(recommendation_code))}
+            </div>
+
+            <div class="agent-status-row">
+                <span class="agent-pill">
+                    PRIORITY · {esc(priority)}
+                </span>
+            </div>
+
+            <div class="agent-decision-meta">
+                {esc(reason)}
+                <br><br>
+                Next step: {esc(next_step)}
+            </div>
+        </div>
+
+        <div class="agent-decision-card agent-decision-card-accent">
+            <div class="agent-decision-label">
+                Proposed Workflow Action
+            </div>
+
+            <div class="agent-decision-value">
+                {esc(readable_component_type(action_type))}
+            </div>
+
+            <div class="agent-status-row">
+                <span class="agent-pill">
+                    {esc(action_status)}
+                </span>
+
+                <span class="agent-pill agent-pill-approval">
+                    {esc(readable_component_type(approval_status))}
+                </span>
+
+                <span class="agent-pill agent-pill-safe">
+                    {esc(readable_component_type(execution_status))}
+                </span>
+            </div>
+
+            <div class="agent-decision-meta">
+                Proposal only. No external maintenance system was modified,
+                and no maintenance action was executed.
+            </div>
+        </div>
+
+    </div>
+    """
+
+
 def investigation_brief(
     result: dict[str, Any],
 ) -> str:
@@ -1858,14 +2054,41 @@ def investigation_brief(
         else "retrieved maintenance evidence"
     )
 
+    recommendation = result.get(
+        "recommendation",
+        {},
+    )
+
+    proposal = result.get(
+        "action_proposal",
+        {},
+    )
+
+    recommendation_text = readable_component_type(
+        recommendation.get(
+            "recommendation_code",
+            "UNAVAILABLE",
+        )
+    )
+
+    action_text = readable_component_type(
+        proposal.get(
+            "action_type",
+            "NO ACTION PROPOSED",
+        )
+    )
+
     return (
         f"{component_id} ({component_type}) produced a predictive "
         f"risk score of {score:.4f} against a review threshold of "
         f"{threshold:.4f} and {state_text}. "
         f"The investigation returned {history_count} maintenance "
         f"event(s) and {evidence_count} evidence chunk(s), including "
-        f"{sections_text}. The result is synthetic decision-support "
-        f"output and is not an autonomous maintenance decision."
+        f"{sections_text}. The agent recommends {recommendation_text} "
+        f"and proposes {action_text}. This proposal requires human "
+        f"approval and remains not executed. The result is synthetic "
+        f"decision-support output and is not an autonomous maintenance "
+        f"decision."
     )
 
 
@@ -2387,6 +2610,29 @@ if result:
         <div style="height:0.55rem;"></div>
 
         <div class="section-kicker">
+            Agent Decision Layer
+        </div>
+
+        <div class="section-heading">
+            Recommendation & human-gated action
+        </div>
+
+        <div class="section-description">
+            Deterministic recommendation and workflow proposal derived from
+            predictive risk, maintenance history, and retrieved evidence.
+        </div>
+        """
+    )
+
+    render_html(
+        agent_decision_markup(result)
+    )
+
+    render_html(
+        """
+        <div style="height:0.55rem;"></div>
+
+        <div class="section-kicker">
             Agent Output
         </div>
 
@@ -2484,8 +2730,8 @@ else:
                 "04",
                 "Agent Investigation",
                 (
-                    "Risk, history, and evidence are assembled "
-                    "into one traceable assessment."
+                    "Risk, history, and evidence drive a human-gated "
+                    "recommendation and action proposal."
                 ),
                 "Orchestration",
             )
@@ -2544,7 +2790,7 @@ else:
             </span>
 
             <span class="arch-node">
-                INVESTIGATION
+                HUMAN GATE
             </span>
 
         </div>
