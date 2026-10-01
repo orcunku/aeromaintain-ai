@@ -36,14 +36,16 @@ The project demonstrates the complete lifecycle of an applied AI system: synthet
 
 ## Project at a Glance
 
-**Fleet** · 100 aircraft · 500 components · 5 component categories
-**Predictive task** · 30-day future component risk ranking
-**Held-out ML** · PR-AUC **0.0713** vs. **0.0393** test prevalence
-**Retrieval** · LSA Hit@1 **0.700** · Hit@3 **1.000** · MRR **0.850**
-**Agent** · Deterministic evidence-driven investigation
-**Action boundary** · Human-gated proposals · **NOT_EXECUTED**
-**Serving** · FastAPI + Streamlit
-**Engineering** · MLflow · Docker · GitHub Actions · **60 tests**
+| Area | Snapshot |
+|:--|:--|
+| **Fleet** | 100 aircraft · 500 components · 5 component categories |
+| **Predictive task** | 30-day future component risk ranking |
+| **Held-out ML** | PR-AUC **0.0713** vs. **0.0393** test prevalence |
+| **Retrieval** | LSA · Hit@1 **0.700** · Hit@3 **1.000** · MRR **0.850** |
+| **Agent** | Evidence-driven investigation with deterministic orchestration |
+| **Action boundary** | Human approval required · **NOT_EXECUTED** |
+| **Serving** | FastAPI · Streamlit |
+| **Engineering** | MLflow · Docker · GitHub Actions · **60 tests** |
 
 ---
 
@@ -284,15 +286,11 @@ AeroMaintain uses a **purged temporal split**, not a random train/test split.
 
 
 
-| Split | Period | Rows | Positive Rate |
-
-|---|---:|---:|---:|
-
-| Train | through 2025-08-01 | 106,500 | 2.49% |
-
-| Validation | 2025-09-01 → 2025-09-30 | 15,000 | 2.67% |
-
-| Test | 2025-10-31 → 2025-12-01 | 16,000 | 3.93% |
+| Split | Evaluation window | Rows | Positive rate |
+|:--|:--|--:|--:|
+| **Train** | ≤ `2025-08-01` | 106,500 | 2.49% |
+| **Validation** | `2025-09-01` → `2025-09-30` | 15,000 | 2.67% |
+| **Test** | `2025-10-31` → `2025-12-01` | 16,000 | 3.93% |
 
 
 
@@ -318,13 +316,10 @@ Validation performance favored Logistic Regression on the selected evaluation cr
 
 
 
-| Validation Metric | Logistic Regression | Random Forest |
-
-|---|---:|---:|
-
-| PR-AUC | **0.0496** | 0.0353 |
-
-| Best F1 | **0.1168** | 0.0889 |
+| Validation metric | Logistic Regression | Random Forest |
+|:--|--:|--:|
+| **PR-AUC** | **0.0496** | 0.0353 |
+| **Best F1** | **0.1168** | 0.0889 |
 
 
 
@@ -348,23 +343,15 @@ The selected Logistic Regression decision threshold was approximately:
 
 
 
-| Metric | Test Result |
-
-|---|---:|
-
-| PR-AUC | **0.0713** |
-
-| ROC-AUC | **0.6811** |
-
-| Precision | **0.0802** |
-
-| Recall | **0.4006** |
-
-| F1 | **0.1337** |
-
+| Held-out metric | Result |
+|:--|--:|
+| **PR-AUC** | **0.0713** |
+| ROC-AUC | 0.6811 |
+| Precision | 0.0802 |
+| Recall | 0.4006 |
+| **F1** | **0.1337** |
 | Random PR baseline | 0.0393 |
-
-| PR lift vs. random | **1.81×** |
+| **PR lift vs. random** | **1.81×** |
 
 
 
@@ -477,12 +464,9 @@ A fixed 10-query synthetic benchmark is included in the repository.
 
 
 | Retriever | Hit@1 | Hit@3 | MRR |
-
-|---|---:|---:|---:|
-
+|:--|--:|--:|--:|
 | TF-IDF | 0.500 | 0.800 | 0.633 |
-
-| **LSA** | **0.700** | **1.000** | **0.850** |
+| **LSA (default)** | **0.700** | **1.000** | **0.850** |
 
 
 
@@ -929,33 +913,19 @@ The benchmark compares the lexical TF-IDF baseline with the LSA semantic retriev
 
 
 | Layer | Technology |
-
 |---|---|
-
 | Language | Python |
-
 | Data Processing | pandas, NumPy, PyArrow |
-
 | Lakehouse | Databricks |
-
 | ML | scikit-learn |
-
 | Experiment Tracking | MLflow |
-
 | Retrieval | TF-IDF, TruncatedSVD / LSA |
-
 | Agent Orchestration | Custom deterministic Python agent + human-gated action proposals |
-
 | API | FastAPI |
-
 | UI | Streamlit |
-
 | Testing | pytest — 60 automated tests |
-
 | Containerization | Docker |
-
 | CI | GitHub Actions |
-
 | Version Control | Git / GitHub |
 
 
