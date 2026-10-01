@@ -36,16 +36,14 @@ The project demonstrates the complete lifecycle of an applied AI system: synthet
 
 ## Project at a Glance
 
-| Area | Current implementation |
-|---|---|
-| Fleet | 100 aircraft · 500 components · 5 component categories |
-| Predictive task | 30-day future component risk ranking |
-| Held-out ML result | PR-AUC **0.0713** vs. **0.0393** test prevalence |
-| Retrieval | LSA: Hit@1 **0.700** · Hit@3 **1.000** · MRR **0.850** |
-| Agent | Deterministic evidence-driven investigation |
-| Action boundary | Human-gated proposals · **NOT_EXECUTED** |
-| Serving | FastAPI + Streamlit |
-| Engineering | MLflow · Docker · GitHub Actions · **60 tests** |
+**Fleet** · 100 aircraft · 500 components · 5 component categories
+**Predictive task** · 30-day future component risk ranking
+**Held-out ML** · PR-AUC **0.0713** vs. **0.0393** test prevalence
+**Retrieval** · LSA Hit@1 **0.700** · Hit@3 **1.000** · MRR **0.850**
+**Agent** · Deterministic evidence-driven investigation
+**Action boundary** · Human-gated proposals · **NOT_EXECUTED**
+**Serving** · FastAPI + Streamlit
+**Engineering** · MLflow · Docker · GitHub Actions · **60 tests**
 
 ---
 
