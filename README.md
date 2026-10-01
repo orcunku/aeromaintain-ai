@@ -1095,7 +1095,7 @@ Core system implemented:
 
 - [x] Containerized runtime
 
-- [ ] Cloud demo deployment
+- [x] Validated Azure Blob Storage integration
 
 
 
