@@ -10,3 +10,4 @@ jupyter
 fastapi
 uvicorn
 streamlit
+azure-storage-blob
