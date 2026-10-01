@@ -505,25 +505,24 @@ Its workflow is designed as a controlled decision-support loop:
 
 ```mermaid
 flowchart TD
-    A["Observe / Validate Component"] --> B["Risk Assess"]
-    B --> C["Retrieve Maintenance History"]
-    C --> D["Identify Component Type"]
-    D --> E["Construct Investigation Query"]
-    E --> F["Retrieve Component-Specific Evidence"]
-    F --> G["Recommend"]
+    A[Observe and Validate Component] --> B[Risk Assessment]
+    B --> C[Retrieve Maintenance History]
+    C --> D[Identify Component Type]
+    D --> E[Build Investigation Query]
+    E --> F[Retrieve Engineering Evidence]
+    F --> G[Generate Recommendation]
 
-    G -->|Below threshold| H["CONDITION_MONITORING<br/>Priority: ROUTINE"]
-    G -->|At / above threshold| I["ENGINEERING_REVIEW<br/>Priority: ELEVATED"]
+    G --> H[Condition Monitoring]
+    G --> I[Engineering Review]
 
-    H --> J["CREATE_MONITORING_CASE"]
-    I --> K["CREATE_ENGINEERING_REVIEW_CASE"]
+    H --> J[Propose Monitoring Case]
+    I --> K[Propose Engineering Review Case]
 
-    J --> L["PROPOSED"]
+    J --> L[Proposed Action]
     K --> L
-    L --> M["HUMAN_APPROVAL_REQUIRED"]
-    M --> N["NOT_EXECUTED<br/>No external system modified"]
+    L --> M[Human Approval Required]
+    M --> N[Not Executed]
 ```
-
 
 
 The recommendation layer is deterministic and uses the predictive risk state, maintenance history, and retrieved evidence as its decision basis. A component below the configured threshold can receive a `CONDITION_MONITORING` recommendation, while an above-threshold component can be routed to `ENGINEERING_REVIEW`.
