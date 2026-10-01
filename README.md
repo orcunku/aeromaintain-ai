@@ -4,10 +4,13 @@
 
 ### Aircraft Maintenance & Reliability Intelligence Platform
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Streamlit-FF4B4B?logo=streamlit&logoColor=white)](https://aeromaintain-ai.streamlit.app/)
-[![CI](https://github.com/orcunku/aeromaintain-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/orcunku/aeromaintain-ai/actions/workflows/ci.yml)
+[![Project Website](https://img.shields.io/badge/Project-Website-2563EB?style=for-the-badge)](https://aeromaintain-ai-port-d6lm.bolt.host/)
+[![Live Demo](https://img.shields.io/badge/Live-Demo-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)](https://aeromaintain-ai.streamlit.app/)
+[![GitHub](https://img.shields.io/badge/Source-GitHub-181717?style=for-the-badge&logo=github)](https://github.com/orcunku/aeromaintain-ai)
 
-**[Launch AeroMaintain AI →](https://aeromaintain-ai.streamlit.app/)**
+**[Explore Project Website →](https://aeromaintain-ai-port-d6lm.bolt.host/)** ·
+**[Launch Live Application →](https://aeromaintain-ai.streamlit.app/)** ·
+**[View Source Code →](https://github.com/orcunku/aeromaintain-ai)**
 
 
 
